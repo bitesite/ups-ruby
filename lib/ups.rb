@@ -6,6 +6,8 @@ module UPS
   autoload :Connection,            'ups/connection'
   autoload :Exceptions,            'ups/exceptions'
 
+  autoload :Utils,                 'ups/utils'
+
   autoload :Data,                  'ups/data'
   module Data
     autoload :US_STATES,           'ups/data/us_states'
@@ -14,9 +16,15 @@ module UPS
     autoload :IE_COUNTY_PREFIXES,  'ups/data/ie_county_prefixes'
   end
 
+  module Models
+    autoload :PackageResult,       'ups/models/package_result'
+  end
+
   module Parsers
+    autoload :BaseParser,          'ups/parsers/base_parser'
     autoload :ParserBase,          'ups/parsers/parser_base'
     autoload :RatesParser,         'ups/parsers/rates_parser'
+    autoload :RateParser,          'ups/parsers/rate_parser'
     autoload :ShipConfirmParser,   'ups/parsers/ship_confirm_parser'
     autoload :ShipAcceptParser,    'ups/parsers/ship_accept_parser'
   end
@@ -30,6 +38,7 @@ module UPS
     autoload :InternationalInvoiceProductBuilder, 'ups/builders/international_invoice_product_builder'
     autoload :ShipAcceptBuilder,                  'ups/builders/ship_accept_builder'
     autoload :OrganisationBuilder,                'ups/builders/organisation_builder'
+    autoload :PackageBuilder,                     'ups/builders/package_builder'
     autoload :ShipperBuilder,                     'ups/builders/shipper_builder'
   end
 end

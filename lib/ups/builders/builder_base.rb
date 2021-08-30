@@ -69,10 +69,14 @@ module UPS
       # @param [String] action The UPS API Action requested
       # @param [String] option The UPS API Option
       # @return [void]
-      def add_request(action, option)
+      def add_request(action, option, sub_version: nil)
         root << Element.new('Request').tap do |request|
           request << element_with_value('RequestAction', action)
           request << element_with_value('RequestOption', option)
+
+          unless sub_version.nil?
+            request << element_with_value('SubVersion', sub_version)
+          end
         end
       end
 
@@ -143,12 +147,7 @@ module UPS
       # @param [Hash] opts A Hash of data to build the requested section
       # @return [void]
       def add_package(opts = {})
-        shipment_root << Element.new('Package').tap do |org|
-          org << packaging_type
-          org << element_with_value('Description', 'Rate')
-          org << package_weight(opts[:weight], opts[:unit])
-          org << package_dimensions(opts[:dimensions]) if opts[:dimensions]
-        end
+        shipment_root << PackageBuilder.new('Package', opts).to_xml
       end
 
       # Adds a PaymentInformation section to the XML document being built
@@ -165,6 +164,12 @@ module UPS
         end
       end
 
+      def add_itemized_payment_information(ship_number)
+        shipment_charge << Element.new('BillShipper').tap do |bill_shipper|
+          bill_shipper << element_with_value('AccountNumber', ship_number)
+        end
+      end
+
       # Adds a RateInformation/NegotiatedRatesIndicator section to the XML
       # document being built
       #
@@ -173,6 +178,38 @@ module UPS
         shipment_root << Element.new('RateInformation').tap do |rate_info|
           rate_info << element_with_value('NegotiatedRatesIndicator', '1')
         end
+      end
+
+      # Adds a Delivery Confirmation DCIS Type to the shipment service options
+      #
+      # @param [String] dcis_type DCIS type
+      # @return [void]
+      def add_shipment_delivery_confirmation(dcis_type)
+        shipment_service_options <<
+          Element.new('DeliveryConfirmation').tap do |delivery_confirmation|
+            delivery_confirmation << element_with_value('DCISType', dcis_type)
+          end
+      end
+
+      # Adds Direct Delivery Only indicator to the shipment service options
+      #
+      # @return [void]
+      def add_shipment_direct_delivery_only
+        shipment_service_options << Element.new('DirectDeliveryOnlyIndicator')
+      end
+
+      # Adds MasterCartonIndicator to the shipment
+      #
+      # @return [void]
+      def add_master_carton_indicator
+        shipment_root << Element.new('MasterCartonIndicator')
+      end
+
+      # Adds MasterCartonID to the shipment
+      #
+      # @return [void]
+      def add_master_carton_id(master_carton_id)
+        shipment_root << element_with_value('MasterCartonID', master_carton_id)
       end
 
       # Returns a String representation of the XML document being built
@@ -192,23 +229,19 @@ module UPS
         root << shipment_root
       end
 
-      def packaging_type
-        code_description 'PackagingType', '02', 'Customer Supplied'
-      end
-
-      def package_weight(weight, unit)
-        Element.new('PackageWeight').tap do |org|
-          org << unit_of_measurement(unit)
-          org << element_with_value('Weight', weight)
+      def shipment_service_options
+        @shipment_service_options ||= begin
+          Element.new('ShipmentServiceOptions').tap do |element|
+            shipment_root << element
+          end
         end
       end
 
-      def package_dimensions(dimensions)
-        Element.new('Dimensions').tap do |org|
-          org << unit_of_measurement(dimensions[:unit])
-          org << element_with_value('Length', dimensions[:length].to_s[0..8])
-          org << element_with_value('Width', dimensions[:width].to_s[0..8])
-          org << element_with_value('Height', dimensions[:height].to_s[0..8])
+      def shipment_charge
+        @shipment_charge ||= begin
+          element = Element.new('ShipmentCharge')
+          shipment_root << (Element.new('ItemizedPaymentInformation') << element)
+          element
         end
       end
 

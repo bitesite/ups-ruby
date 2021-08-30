@@ -16,6 +16,9 @@ class UPS::Builders::TestShipConfirmBuilder < Minitest::Test
       builder.add_description 'Los Pollo Hermanos'
       builder.add_reference_number reference_number
       builder.add_insurance_charge '5.00'
+      builder.add_shipment_delivery_confirmation '2'
+      builder.add_shipment_direct_delivery_only
+      builder.add_invoice_line_total('12', "GBP")
     end
   end
 

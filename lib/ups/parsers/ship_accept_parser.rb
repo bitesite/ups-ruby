@@ -3,82 +3,91 @@ require 'tempfile'
 
 module UPS
   module Parsers
-    class ShipAcceptParser < ParserBase
-      attr_accessor :label_root_path,
-                    :form_root_path,
-                    :graphic_image,
-                    :graphic_extension,
-                    :html_image,
-                    :label_graphic_image,
-                    :label_graphic_extension,
-                    :label_html_image,
-                    :form_graphic_image,
-                    :form_graphic_extension,
-                    :tracking_number
-
-      def value(value)
-        initialize_document_root_paths
-
-        parse_document_data(value, 'label')
-        parse_document_data(value, 'form')
-        parse_tracking_number(value)
-
-        super
+    class ShipAcceptParser < BaseParser
+      def tracking_number
+        packages[0].tracking_number
       end
 
-      def initialize_document_root_paths
-        self.label_root_path = [:ShipmentResults, :PackageResults, :LabelImage]
-        self.form_root_path  = [:ShipmentResults, :Form, :Image]
+      def label_graphic_extension
+        packages[0].label_graphic_extension
       end
 
-      def parse_document_data(value, type)
-        root_path = self.send("#{type}_root_path")
-
-        parse_graphic_extension(root_path, value, type)
-        parse_graphic_image(root_path, value, type)
-        parse_html_image(root_path, value, type)
+      def label_graphic_image
+        packages[0].label_graphic_image
       end
 
-      def parse_graphic_image(root_path, value, type)
-        switch_path = build_switch_path(root_path, :GraphicImage)
-        return unless switch_active?(switch_path)
-
-        self.send("#{type}_graphic_image=".to_sym, base64_to_file(value.as_s, type))
-        self.send("graphic_image=".to_sym, base64_to_file(value.as_s, type)) if type == 'label'
+      def label_html_image
+        packages[0].label_html_image
       end
 
-      def parse_html_image(root_path, value, type)
-        switch_path = build_switch_path(root_path, :HTMLImage)
-        return unless switch_active?(switch_path)
+      alias_method :graphic_extension, :label_graphic_extension
+      alias_method :graphic_image, :label_graphic_image
+      alias_method :html_image, :label_html_image
 
-        self.send("#{type}_html_image=".to_sym, base64_to_file(value.as_s, type))
-        self.send("html_image=".to_sym, base64_to_file(value.as_s, type)) if type == 'label'
+      def form_graphic_extension
+        return unless has_form_graphic?
+
+        ".#{form_graphic[:Image][:ImageFormat][:Code].downcase}"
       end
 
-      def parse_graphic_extension(root_path, value, type)
-        graphic_extension_subpath = (type == 'label' ? :LabelImageFormat : :ImageFormat)
+      def form_graphic_image
+        return unless has_form_graphic?
 
-        switch_path = build_switch_path(root_path, graphic_extension_subpath, :Code)
-        return unless switch_active?(switch_path)
-
-        self.send("#{type}_graphic_extension=".to_sym, ".#{value.as_s.downcase}")
-        self.send("graphic_extension=".to_sym, ".#{value.as_s.downcase}") if type == 'label'
+        Utils.base64_to_file(form_graphic[:Image][:GraphicImage], form_graphic_extension)
       end
 
-      def parse_tracking_number(value)
-        return unless switch_active?(:ShipmentIdentificationNumber)
-        self.tracking_number = value.as_s
+      def packages
+        return package_results.map { |package_result| UPS::Models::PackageResult.new(package_result) } if package_results.is_a?(Array)
+
+        [UPS::Models::PackageResult.new(package_results)]
       end
 
-      def base64_to_file(contents, type)
-        file_config = ['ups', self.send("#{type}_graphic_extension".to_sym)]
-        Tempfile.new(file_config, nil, encoding: 'ascii-8bit').tap do |file|
-          begin
-            file.write Base64.decode64(contents)
-          ensure
-            file.rewind
-          end
-        end
+      def master_carton_id
+        shipment_results[:MasterCartonID]
+      end
+
+      def total_charge
+        return shipment_charge unless negotiated_rate
+
+        negotiated_rate
+      end
+
+      def negotiated_rate
+        negotiated_rate_response && negotiated_rate_response[:NetSummaryCharges][:GrandTotal][:MonetaryValue].to_f
+      end
+
+      def currency_code
+        shipment_results[:ShipmentCharges][:TotalCharges][:CurrencyCode]
+      end
+
+      private
+
+      def negotiated_rate_response
+        shipment_results[:NegotiatedRates]
+      end
+
+      def shipment_charge
+        shipment_results[:ShipmentCharges][:TotalCharges][:MonetaryValue].to_f
+      end
+
+      def form_graphic
+        shipment_results[:Form]
+      end
+
+      def has_form_graphic?
+        shipment_results.key?(:Form)
+      end
+
+      def package_results
+        shipment_results[:PackageResults]
+      end
+
+      def shipment_results
+        root_response[:ShipmentResults]
+      end
+
+      def root_response
+        parsed_response[:ShipmentAcceptResponse]
       end
     end
   end

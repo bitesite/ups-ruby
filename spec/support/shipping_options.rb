@@ -9,7 +9,8 @@ module ShippingOptions
       state: 'Wales',
       postal_code: 'SA1 1DA',
       country: 'GB',
-      shipper_number: ENV['UPS_ACCOUNT_NUMBER']
+      shipper_number: ENV['UPS_ACCOUNT_NUMBER'],
+      sender_vat_number: '123456'
     }
   end
 
@@ -22,12 +23,21 @@ module ShippingOptions
       city: 'London',
       state: 'England',
       postal_code: 'WC2H 8AG',
+      email_address: 'test@example.com',
       country: 'GB'
     }
   end
 
   def package
     {
+      reference_number: {
+        value: 'GB393023098',
+        type: 'TN'
+      },
+      reference_number_2: {
+        value: '#3403',
+        type: 'IK'
+      },
       weight: '0.5',
       unit: 'KGS',
       dimensions: {
@@ -35,6 +45,50 @@ module ShippingOptions
         width: 30.0,
         height: 20.0,
         unit: 'CM'
+      }
+    }
+  end
+
+  def large_package
+    {
+      reference_number: {
+        value: 'GB393023098'
+      },
+      weight: '1',
+      unit: 'KGS',
+      dimensions: {
+        length: 45.0,
+        width: 35.0,
+        height: 25.0,
+        unit: 'CM'
+      }
+    }
+  end
+
+  def package_with_carrier_packaging
+    {
+      weight: '1',
+      unit: 'KGS',
+      packaging_type:{
+        code: '01',
+        description: 'Tube'
+      }
+    }
+  end
+
+  def package_with_carrier_packaging_and_dimensions
+    {
+      weight: '1',
+      unit: 'KGS',
+      dimensions: {
+        length: 40,
+        width: 30,
+        height: 20,
+        unit: 'CM'
+      },
+      packaging_type:{
+        code: '01',
+        description: 'Tube'
       }
     }
   end
@@ -51,7 +105,11 @@ module ShippingOptions
       invoice_number: '#P-1234',
       invoice_date: '20170816',
       reason_for_export: '',
+      terms_of_shipment: 'DDP',
+      declaration_statement: 'U.S Customs (Freeform text)',
       currency_code: 'USD',
+      discount: '1',
+      freight_charge: '1',
       products: [
         {
           description: 'White coffee mug',
