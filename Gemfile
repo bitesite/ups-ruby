@@ -6,5 +6,7 @@ group :development, :test do
   gem 'codeclimate-test-reporter', '~> 1.0.0'
   gem 'rake'
   gem 'minitest'
-  gem 'nokogiri'
+  gem 'nokogiri', "~> 1.18.0"
+  gem 'levenshtein-ffi'
+  gem 'ffi'
 end
